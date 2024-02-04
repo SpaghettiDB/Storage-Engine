@@ -8,8 +8,11 @@ heap is a collection of pages. Each page is a collection of records. Each record
 
 ### HeapHeader
 
-- PageCount
-- HeapId
+The heap header contains the following information:
+```
+|  HeapID   | PageCount | RowCount |
+|    4B     |    4B     |    4B    |
+```
 
 ## Page Structure
 
