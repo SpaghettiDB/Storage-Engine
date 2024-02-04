@@ -12,16 +12,68 @@ heap is a collection of pages. Each page is a collection of records. Each record
 - HeapId
 
 ## Page Structure
+![ page structure](assets/image.png)
 
-- PageHeader
-- Records
-- slot array
+### PageHeader
+- usually 96 bytes long contains some common required fields like:
+    - **PageId**
+        identifier of the page number in the heap file.
+    - **PageType**
+        type of the page, it can be:
+        - **DataPage**
+            contains records
+        - **IndexPage**
+            contains index entries
+        - **HeaderPage**
+            contains the heap header
+    - **PageSize**
+        the size of the page in bytes usually 8KB similiar to postgres and mysql.
+    -  **pageoffset**
+        the offset of the page in the heap file.
+    - **NextPageId**
+        the identifier of the next page in the heap file.
+    - **PrevPageId**
+        the identifier of the previous page in the heap file.
+    - **FreeSpace**
+        the amount of free space in the page.
+    - **RecordCount/slotCount**
+        the number of records in the page.
+    - **FreeSpaceOffset**
+        the offset of the first free byte in the page.
+    - **DataOffset(useless if it fixed accros all pages)**
+        the offset of the first record in the page.
+    - **slotArrayOffset((useless if it is in fixed offset accros all pages)**
+        the offset of the slot array in the page.
+    - **Timestamps**
+        - CreationTimestamp
+        - LastUpdateTimestamp
+        - LastAccessTimestamp
+    - **Checksum(not necessary)**
+        a checksum to verify the integrity of the page.
 
-## Record Structure
-
-- RecordHeader
-- Fields
-
+### Record Structure
+- **RecordHeader**
+    - **RecordId**
+        the identifier of the record in the page.
+    - **RecordSize**
+        the size of the record in bytes.
+    - **FieldCount**
+        the number of fields in the record.
+    - **FieldOffset(useless if it fixed accros all records)**
+        the offset of the first field in the record.
+    - **Timestamps**
+        - CreationTimestamp
+        - LastUpdateTimestamp
+        - LastAccessTimestamp
+        
+### slotArray
+- an array of slots, each slot contains the following fields:
+    - **RecordId**
+        the identifier of the record in the page.
+    - **RecordOffset**
+        the offset of the record in the page.
+    - **RecordSize**
+        the size of the record in bytes.
 ## HeapManager API
 
 HeapManager deals with binary data, so it provides a set of functions to read and write binary data to the disk. so all the functions are dealing with byte arrays, heap manager doesn't know anything about the data types of the fields. It's the responsibility of the higher layers to interpret the data.
