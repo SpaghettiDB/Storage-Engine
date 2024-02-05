@@ -1,20 +1,42 @@
 /*
+
+PACKAGE NAME : heapmanager
 this package is a heap manager that will be used to manage the heap of the database.
 please read the heapfile format in docs carefully we all should be consistent with the format.
 
+RESPONSIBILITIES :
 this module should only work with binary data and should not be aware of the data types of the columns.
 it just take []byte and write it to the file.
 it just read the []byte from the file and return it to the caller.
 parsing the data types and the columns should be done in the higher level modules.
 
-
-while we write the public functions we may need to write some helper functions that will be used internally.
+CODE REUSE :
+while writing the public functions we may need to write some helper functions
 please announce the need of specific helper function on slack so we can discuss and reuse logic .
 
-writing unit tests is really appreciated.
+TESTING :
+writing unit tests is really appreciated :)
+
+TODO :
+- For now we won't use slot array we will just traverse records by reading record size
+- For now we won't use free-list, our heap will grow indefinitely
+
+MOTIVATION :
+- move fast and break things :D
+
+i know skipping some staff like slot array or free-list is not a good idea
+but i always prefer to have something that works and then improve it
+trust the process and let's move fast and break things
+
 */
 
 package heapmanager
+
+import (
+	"encoding/binary"
+	"fmt"
+	"os"
+)
 
 const pageSize = 8192
 const pageHeaderSize = 4
@@ -36,11 +58,12 @@ func AddRowToHeap(name string, row []byte) {
 	//read pageCount from the header and go read this page
 	//then read the free space available in the page if it's enough go ahead
 	//if not then it's time to add new page to this heap then add the row
+	//you can use Sync function to flush to ensure durability
 	//update the page header
 }
 
 // returns all the rows from the heap with name = name and page index = pageIndex.
-func GetPageFromHeap(name string, pageIndex int) [][]byte {
+func GetPageRowsFromHeap(name string, pageIndex int) [][]byte {
 	//open the file
 	//read the header
 	//read the pageCount from the header
@@ -63,6 +86,26 @@ func GetRowFromHeap(name string, rowIndex int) []byte {
 
 	//this function can reuse logic of GetPageFromHeap,
 	//you just need to deduce the page index as the previous explanation
-
 	return nil
+}
+
+//private helper functions
+
+// takes a page and returns freeSpaceOffset and recordCount
+func parsePageHeader(page []byte) (uint16, uint16) {
+	return 0, 0
+}
+
+// returns the page with pageIndex from the heap with name = name.
+func getPageFromHeap(file *os.File, pageIndex int) []byte {
+	//read the page from the file
+	//return the page
+	//checking out of bound is the responsibility of the caller
+	//take care of header size
+	return nil
+}
+
+// parse the heap header and return the pageCount and rowCount
+func parseHeapHeader(header []byte) (uint16, uint16) {
+	return 0, 0
 }
