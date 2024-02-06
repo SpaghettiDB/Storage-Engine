@@ -20,6 +20,7 @@ writing unit tests is really appreciated :)
 TODO :
 - For now we won't use slot array we will just traverse records by reading record size
 - For now we won't use free-list, our heap will grow indefinitely
+- use binary search for getting row with specific index
 
 MOTIVATION :
 - move fast and break things :D
@@ -94,7 +95,7 @@ func parsePageHeader(page []byte) (uint16, uint16) {
 }
 
 // parse the heap header and return the pageCount and rowCount
-func parseHeapHeader(header []byte) (uint16, uint16) {
+func parseHeapHeader(header []byte) (uint32, uint32) {
 	return 0, 0
 }
 
