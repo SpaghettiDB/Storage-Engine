@@ -33,8 +33,6 @@ trust the process and let's move fast and break things
 package heapmanager
 
 import (
-	"encoding/binary"
-	"fmt"
 	"os"
 )
 
@@ -83,20 +81,35 @@ func GetRowFromHeap(name string, rowIndex int) []byte {
 	//if not then subtract the rowCount from the rowIndex and go to the next page and so on
 	//when you find the page that contains the row then read it and return the required row
 	//please take care of difference between rowIndex and rowCount in page header
-
 	//this function can reuse logic of GetPageFromHeap,
 	//you just need to deduce the page index as the previous explanation
 	return nil
 }
 
-//private helper functions
+//-------------private helper functions -------------------
 
 // takes a page and returns freeSpaceOffset and recordCount
 func parsePageHeader(page []byte) (uint16, uint16) {
 	return 0, 0
 }
 
-// returns the page with pageIndex from the heap with name = name.
+// parse the heap header and return the pageCount and rowCount
+func parseHeapHeader(header []byte) (uint16, uint16) {
+	return 0, 0
+}
+
+// takes a page and returns all the rows in the page
+func extractRowsFromPage(page []byte) [][]byte {
+	return nil
+}
+
+// crete new page and initialize page header with free space offset = 0 and record count = 0
+// return the page as []byte
+func createPage() []byte {
+	return nil
+}
+
+// returns the page with pageIndex from the heap file
 func getPageFromHeap(file *os.File, pageIndex int) []byte {
 	//read the page from the file
 	//return the page
@@ -105,7 +118,13 @@ func getPageFromHeap(file *os.File, pageIndex int) []byte {
 	return nil
 }
 
-// parse the heap header and return the pageCount and rowCount
-func parseHeapHeader(header []byte) (uint16, uint16) {
-	return 0, 0
+// overWrite the page to the file at pageIndex
+func overWritePageToHeap(file *os.File, pageIndex int, page []byte) {
+	//overWrite the page to the file
+	//use the file.WriteAt function
+}
+
+// append the page to the file
+func appendPageToHeap(file *os.File, page []byte) {
+	//use the file.Write function to append the page to the file
 }
