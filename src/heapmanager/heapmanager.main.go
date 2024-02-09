@@ -142,8 +142,8 @@ func extractRowsFromPage(page []byte) [][]byte {
 func createPage() []byte {
 	page := make([]byte, pageSize)
 
-	copy(page[0:4], []byte{byte(pageHeaderSize >> 8), byte(pageHeaderSize)})
-	copy(page[4:8], []byte{0, 0})
+	copy(page[0:2], []byte{byte(pageHeaderSize >> 8), byte(pageHeaderSize)})
+	copy(page[2:4], []byte{0, 0})
 	return page
 }
 
