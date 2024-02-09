@@ -34,20 +34,46 @@ trust the process and let's move fast and break things
 package heapmanager
 
 import (
+	"database/src/errors"
 	"os"
 )
 
-const pageSize = 8192
-const pageHeaderSize = 4
-const heapHeaderSize = 8
+const (
+	pageSize       = 8192
+	pageHeaderSize = 4
+	heapHeaderSize = 8
+)
 
 // creates a new heap file with file name = name and initializes the heap header.
 // after calling this function it's expected to find a file with name = name
 // and the size of the file should be equal to the header size.
-func CreateHeap(name string) {
-	//you can use os package to create a file
-	//truncate function can be used to set the size of the file
-	//use the file.WriteAt function to write the header to the file
+
+func CreateHeap(name string) error {
+	//check if the file already exists
+	if _, err := os.Stat(name); os.IsNotExist(err) {
+		return &errors.ResourceAlreadyExistsError{
+			ResourceType: errors.Heap,
+			ResourceName: name,
+		}
+	}
+
+	file, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+
+	// set the file permission to 0644
+	if err := file.Chmod(0644); err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	header := make([]byte, heapHeaderSize)
+	if _, err := file.WriteAt(header, 0); err != nil {
+		return err
+	}
+	return nil
 }
 
 // adds a new row to the heap with name.
@@ -96,7 +122,14 @@ func parsePageHeader(page []byte) (uint16, uint16) {
 
 // parse the heap header and return the pageCount and rowCount
 func parseHeapHeader(header []byte) (uint32, uint32) {
-	return 0, 0
+
+	if len(header) != heapHeaderSize {
+		return 0, 0
+	}
+	pageCount := uint32(header[0])<<24 | uint32(header[1])<<16 | uint32(header[2])<<8 | uint32(header[3])
+	rowCount := uint32(header[4])<<24 | uint32(header[5])<<16 | uint32(header[6])<<8 | uint32(header[7])
+
+	return pageCount, rowCount
 }
 
 // takes a page and returns all the rows in the page
@@ -107,7 +140,11 @@ func extractRowsFromPage(page []byte) [][]byte {
 // crete new page and initialize page header with free space offset = 0 and record count = 0
 // return the page as []byte
 func createPage() []byte {
-	return nil
+	page := make([]byte, pageSize)
+
+	copy(page[0:4], []byte{byte(pageHeaderSize >> 8), byte(pageHeaderSize)})
+	copy(page[4:8], []byte{0, 0})
+	return page
 }
 
 // returns the page with pageIndex from the heap file
