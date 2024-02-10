@@ -1,51 +1,23 @@
 package main
 
 import (
+	"database/src/heapmanager"
 	"fmt"
-	"os"
 )
 
 func main() {
 
-	//create new file
-	file, err := os.Create("test.txt")
-	if err != nil {
-		fmt.Println(err)
-	}
+	heapmanager.CreateHeap("student")
+	heapmanager.AddRowToHeap("student", []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
 
-	//write to file
-	_, err = file.WriteString("Hello World")
-	if err != nil {
-		fmt.Println(err)
-	}
+	rows := heapmanager.GetPageRowsFromHeap("student", 0)
 
-	//write to the end of the file
-
-	//convert string to byte slice
-	byteSlice := []byte("Appending to existing file")
-	_, err = file.Write(byteSlice)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	file.Sync() //flush the file to ensure durability
-
-	//get file size
-	fileStat, err := file.Stat()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	//make a byte slice
-	fileSize := fileStat.Size()
-	byteSlice = make([]byte, fileSize)
-
-	//read file
-	_, err = file.ReadAt(byteSlice, 0)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println(string(byteSlice))
+	fmt.Println(rows)
 
 }
