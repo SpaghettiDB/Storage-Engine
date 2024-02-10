@@ -36,6 +36,7 @@ package heapmanager
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -51,9 +52,10 @@ const (
 
 func CreateHeap(name string) error {
 	//check if the file already exists
-	if _, err := os.Stat(name); os.IsNotExist(err) {
-		return errors.New("file already exists")
-	}
+
+	// if _, err := os.Stat(name); os.IsNotExist(err) {
+	// 	return errors.New("file already exists")
+	// }
 
 	file, err := os.Create(name)
 	if err != nil {
@@ -71,6 +73,11 @@ func CreateHeap(name string) error {
 	if _, err := file.WriteAt(header, 0); err != nil {
 		return err
 	}
+	file.Sync()
+
+	//create the first page and write it to the file
+	page := createPage()
+	appendPageToHeap(file, page)
 	return nil
 }
 
@@ -127,6 +134,7 @@ func AddRowToHeap(name string, row []byte) {
 
 		//overWrite the page to the file
 		overWritePageToHeap(file, int(pageCount-1), page)
+
 	} else {
 
 		//if the free space available is not enough to add the row then add new page
@@ -140,6 +148,24 @@ func AddRowToHeap(name string, row []byte) {
 		//call the function recursively to add the row to the new page
 		AddRowToHeap(name, row)
 	}
+
+	//update the heap header with the new rowCount
+	//read the header in byte slice
+	header = make([]byte, heapHeaderSize)
+	if _, err := file.ReadAt(header, 0); err != nil {
+		return
+	}
+
+	//parse the header
+	_, rowCount := parseHeapHeader(header)
+
+	//update the rowCount
+	rowCount++
+	binary.BigEndian.PutUint32(header[4:8], rowCount)
+
+	//write the header to the file
+	file.WriteAt(header, 0)
+	file.Sync()
 
 }
 
@@ -157,7 +183,7 @@ func GetPageRowsFromHeap(name string, pageIndex int) [][]byte {
 	}
 
 	pageCount, _ := parseHeapHeader(header)
-	if pageIndex > int(pageCount) {
+	if pageIndex >= int(pageCount) {
 		return nil
 	}
 
@@ -261,7 +287,13 @@ func parseHeapHeader(header []byte) (uint32, uint32) {
 
 // takes a page and returns all the rows in the page
 func extractRowsFromPage(page []byte) [][]byte {
+
+	// fmt.Println("extractRowsFromPage ", page)
+
 	_, recordCount := parsePageHeader(page)
+
+	fmt.Println("recordCount ", recordCount)
+
 	records := make([][]byte, 0)
 
 	//skip the header size
@@ -278,7 +310,7 @@ func extractRowsFromPage(page []byte) [][]byte {
 
 		//update the index to get the next row
 		recordIndex = recordIndex + 2 + int(rowSize)
-		recordCount -= recordCount
+		recordCount -= 1
 	}
 	return records
 }
@@ -326,6 +358,28 @@ func overWritePageToHeap(file *os.File, pageIndex int, page []byte) {
 
 // append the page to the file
 func appendPageToHeap(file *os.File, page []byte) {
-	file.Write(page)
+	//write the page to the end of the file
+	//get file size and write the page to the end of the file
+
+	// Get the current file size
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return
+	}
+	fileSize := fileInfo.Size()
+
+	// Write the page to the end of the file
+	file.WriteAt(page, fileSize)
+
+	//read heap header from the file and parse it then ++ pageCount
+
+	header := make([]byte, heapHeaderSize)
+	file.ReadAt(header, 0)
+	pageCount, _ := parseHeapHeader(header)
+	pageCount++
+	binary.BigEndian.PutUint32(header, pageCount)
+
+	//write the heap header to the file
+	file.WriteAt(header, 0)
 	file.Sync()
 }
