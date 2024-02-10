@@ -264,12 +264,26 @@ func createPage() []byte {
 }
 
 // returns the page with pageIndex from the heap file
-func getPageFromHeap(file *os.File, pageIndex int) []byte {
+func getPageFromHeap(file *os.File, pageIndex int) ([]byte, error) {
 	//read the page from the file
 	//return the page
 	//checking out of bound is the responsibility of the caller
 	//take care of header size
-	return nil
+	// Calculate the offset of the page within the file
+	offset := int64(heapHeaderSize + pageIndex*pageSize)
+
+	// Seek to the beginning of the page
+	if _, err := file.Seek(offset, 0); err != nil {
+		return nil, err
+	}
+
+	// Read the page content
+	page := make([]byte, pageSize)
+	if _, err := file.Read(page); err != nil {
+		return nil, err
+	}
+
+	return page, nil
 }
 
 // overWrite the page to the file at pageIndex
