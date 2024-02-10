@@ -148,12 +148,26 @@ func AddRowToHeap(name string, row []byte) {
 
 // returns all the rows from the heap with name = name and page index = pageIndex.
 func GetPageRowsFromHeap(name string, pageIndex int) [][]byte {
-	//open the file
-	//read the header
-	//read the pageCount from the header
-	//if the pageIndex is greater than the pageCount then return nil directly else
-	//read the page from the file and return its record as [][]byte
-	return nil
+	file, err := os.OpenFile(name, os.O_RDWR, 0644)
+
+	if err != nil {
+		return nil
+	}
+
+	header := make([]byte, heapHeaderSize)
+	if _, err := file.ReadAt(header, 0); err != nil {
+		return nil
+	}
+
+	pageCount, _ := parseHeapHeader(header)
+	if pageIndex > int(pageCount) {
+		return nil
+	}
+
+	page := getPageFromHeap(file, pageIndex)
+	rows := extractRowsFromPage(page)
+
+	return rows
 }
 
 // returns the row with index = rowIndex from the heap with name = name.
@@ -200,7 +214,26 @@ func parseHeapHeader(header []byte) (uint32, uint32) {
 
 // takes a page and returns all the rows in the page
 func extractRowsFromPage(page []byte) [][]byte {
-	return nil
+	_, recordCount := parsePageHeader(page)
+	records := make([][]byte, 0)
+
+	//skip the header size
+	recordIndex := pageHeaderSize
+
+	for recordCount > 0 {
+		//read the row size from row header
+		rowSize := binary.BigEndian.Uint16(page[recordIndex : recordIndex + 2])
+
+		//read the row from the page
+		row := make([]byte, rowSize)
+		copy(row, page[recordIndex + 2 : recordIndex + 2 + int(rowSize)])
+		records = append(records, row)
+
+		//update the index to get the next row
+		recordIndex = recordIndex + 2 + int(rowSize)
+		recordCount -= recordCount
+	}
+	return records
 }
 
 // crete new page and initialize page header with free space offset = 0 and record count = 0
@@ -232,5 +265,6 @@ func overWritePageToHeap(file *os.File, pageIndex int, page []byte) {
 
 // append the page to the file
 func appendPageToHeap(file *os.File, page []byte) {
-	//use the file.Write function to append the page to the file
+	file.Write(page)
+	file.Sync()
 }
