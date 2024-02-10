@@ -34,8 +34,8 @@ trust the process and let's move fast and break things
 package heapmanager
 
 import (
-	"database/src/errors"
 	"encoding/binary"
+	"errors"
 	"os"
 )
 
@@ -52,10 +52,7 @@ const (
 func CreateHeap(name string) error {
 	//check if the file already exists
 	if _, err := os.Stat(name); os.IsNotExist(err) {
-		return &errors.ResourceAlreadyExistsError{
-			ResourceType: errors.Heap,
-			ResourceName: name,
-		}
+		return errors.New("file already exists")
 	}
 
 	file, err := os.Create(name)
@@ -99,7 +96,7 @@ func AddRowToHeap(name string, row []byte) {
 	}
 
 	pageCount, _ := parseHeapHeader(header)
-	page := getPageFromHeap(file, int(pageCount-1))
+	page, _ := getPageFromHeap(file, int(pageCount-1))
 	freeSpaceOffset, recordCount := parsePageHeader(page)
 
 	//calculate the free space available in the page
@@ -164,7 +161,7 @@ func GetPageRowsFromHeap(name string, pageIndex int) [][]byte {
 		return nil
 	}
 
-	page := getPageFromHeap(file, pageIndex)
+	page, _ := getPageFromHeap(file, pageIndex)
 	rows := extractRowsFromPage(page)
 
 	return rows
@@ -207,7 +204,7 @@ func GetRowFromHeap(name string, rowIndex int) ([]byte, error) {
 	// Iterate through each page until we find the page containing the row
 	for pageIndex = 0; pageIndex < int(pageCount); pageIndex++ {
 		// Get the page from the heap file
-		page := getPageFromHeap(file, pageIndex)
+		page, _ := getPageFromHeap(file, pageIndex)
 		if page == nil {
 			return nil, errors.New("failed to retrieve page")
 		}
@@ -272,11 +269,11 @@ func extractRowsFromPage(page []byte) [][]byte {
 
 	for recordCount > 0 {
 		//read the row size from row header
-		rowSize := binary.BigEndian.Uint16(page[recordIndex : recordIndex + 2])
+		rowSize := binary.BigEndian.Uint16(page[recordIndex : recordIndex+2])
 
 		//read the row from the page
 		row := make([]byte, rowSize)
-		copy(row, page[recordIndex + 2 : recordIndex + 2 + int(rowSize)])
+		copy(row, page[recordIndex+2:recordIndex+2+int(rowSize)])
 		records = append(records, row)
 
 		//update the index to get the next row
