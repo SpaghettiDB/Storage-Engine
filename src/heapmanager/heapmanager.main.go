@@ -35,6 +35,7 @@ package heapmanager
 
 import (
 	"database/src/errors"
+	"encoding/binary"
 	"os"
 )
 
@@ -85,6 +86,64 @@ func AddRowToHeap(name string, row []byte) {
 	//if not then it's time to add new page to this heap then add the row
 	//you can use Sync function to flush to ensure durability
 	//update the page header
+
+	file, err := os.OpenFile(name, os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+
+	//read the header in byte slice
+	header := make([]byte, heapHeaderSize)
+	if _, err := file.ReadAt(header, 0); err != nil {
+		return
+	}
+
+	pageCount, _ := parseHeapHeader(header)
+	page := getPageFromHeap(file, int(pageCount-1))
+	freeSpaceOffset, recordCount := parsePageHeader(page)
+
+	//calculate the free space available in the page
+	freeSpaceAvailable := pageSize - freeSpaceOffset
+
+	//if the free space available is enough to add the row then go ahead
+	//notice that we add 2 to the length of the row to store the record size
+
+	if int(freeSpaceAvailable) >= len(row)+2 {
+		//write the row with its size to the page
+		//update the page header
+
+		//get the record size and convert it to byte slice
+		recordSize := make([]byte, 2)
+		binary.BigEndian.PutUint16(recordSize, uint16(len(row)))
+
+		//write the record size to the page
+		copy(page[freeSpaceOffset:], recordSize)
+
+		//write the row to the page
+		copy(page[freeSpaceOffset+2:], row)
+
+		//update the page header
+		freeSpaceOffset += uint16(len(row) + 2)
+		recordCount++
+		binary.BigEndian.PutUint16(page[0:2], freeSpaceOffset)
+		binary.BigEndian.PutUint16(page[2:4], recordCount)
+
+		//overWrite the page to the file
+		overWritePageToHeap(file, int(pageCount-1), page)
+	} else {
+
+		//if the free space available is not enough to add the row then add new page
+		//initialize the new page and write the row to it
+		//update the heap header
+		//create new page
+		newPage := createPage()
+		//append the new page to the file
+		appendPageToHeap(file, newPage)
+
+		//call the function recursively to add the row to the new page
+		AddRowToHeap(name, row)
+	}
+
 }
 
 // returns all the rows from the heap with name = name and page index = pageIndex.
@@ -117,7 +176,14 @@ func GetRowFromHeap(name string, rowIndex int) []byte {
 
 // takes a page and returns freeSpaceOffset and recordCount
 func parsePageHeader(page []byte) (uint16, uint16) {
-	return 0, 0
+	if len(page) != pageSize {
+		return 0, 0
+	}
+
+	freeSpaceOffset := binary.BigEndian.Uint16(page[0:2])
+	recordCount := binary.BigEndian.Uint16(page[2:4])
+
+	return freeSpaceOffset, recordCount
 }
 
 // parse the heap header and return the pageCount and rowCount
@@ -160,6 +226,8 @@ func getPageFromHeap(file *os.File, pageIndex int) []byte {
 func overWritePageToHeap(file *os.File, pageIndex int, page []byte) {
 	//overWrite the page to the file
 	//use the file.WriteAt function
+	file.WriteAt(page, int64(pageIndex*pageSize)+int64(heapHeaderSize))
+	file.Sync()
 }
 
 // append the page to the file
