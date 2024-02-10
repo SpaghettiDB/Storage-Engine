@@ -157,7 +157,7 @@ func GetPageRowsFromHeap(name string, pageIndex int) [][]byte {
 }
 
 // returns the row with index = rowIndex from the heap with name = name.
-func GetRowFromHeap(name string, rowIndex int) []byte {
+func GetRowFromHeap(name string, rowIndex int) ([]byte, error) {
 	//open the file
 	//read the header
 	//read the rowCount from the header
@@ -169,7 +169,57 @@ func GetRowFromHeap(name string, rowIndex int) []byte {
 	//please take care of difference between rowIndex and rowCount in page header
 	//this function can reuse logic of GetPageFromHeap,
 	//you just need to deduce the page index as the previous explanation
-	return nil
+	file, err := os.OpenFile(name, os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the header in byte slice
+	header := make([]byte, heapHeaderSize)
+	if _, err := file.ReadAt(header, 0); err != nil {
+		return nil, err
+	}
+
+	pageCount, rowCount := parseHeapHeader(header)
+
+	// rowCount := binary.LittleEndian.Uint32(header[:4])
+	if rowIndex >= int(rowCount) {
+		return nil, errors.New("row index out of range")
+	}
+	// Initialize variables for tracking page index and remaining rows to find
+	remainingRows := rowIndex
+	var pageIndex int
+
+	// Iterate through each page until we find the page containing the row
+	for pageIndex = 0; pageIndex < int(pageCount); pageIndex++ {
+		// Get the page from the heap file
+		page := getPageFromHeap(file, pageIndex)
+		if page == nil {
+			return nil, errors.New("failed to retrieve page")
+		}
+
+		// Parse page header to get the number of records and free space offset
+		_, recordCount := parsePageHeader(page)
+
+		// Check if the row is in this page
+		if remainingRows < int(recordCount) {
+			// Calculate the offset of the row within the page
+			rowOffset := pageHeaderSize
+			for i := 0; i < remainingRows; i++ {
+				recordSize := binary.BigEndian.Uint16(page[rowOffset : rowOffset+2])
+				rowOffset += int(recordSize) + 2 // 2 bytes for record size
+			}
+			// Extract and return the row
+			recordSize := binary.BigEndian.Uint16(page[rowOffset : rowOffset+2])
+			return page[rowOffset+2 : rowOffset+2+int(recordSize)], nil
+		} else {
+			// Move to the next page
+			remainingRows -= int(recordCount)
+		}
+	}
+
+	// If the loop completes without finding the row, return an error
+	return nil, errors.New("row not found")
 }
 
 //-------------private helper functions -------------------
