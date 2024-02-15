@@ -18,6 +18,7 @@ The index manager module maintains metadata for all indexes in a file with the f
 - Column Name Length (4 bytes)
 - updatesCount (4 bytes)
 - Indexversion (4 bytes)
+- number of keys (4 bytes)
 ...
 
 ## Index Structure
