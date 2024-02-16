@@ -2,9 +2,8 @@ package indexmanager
 
 import (
 	"fmt"
-	"path"
-
 	"github.com/krasun/fbptree"
+	"path"
 )
 
 func PlayGround() {
