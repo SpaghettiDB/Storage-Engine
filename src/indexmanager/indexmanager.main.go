@@ -13,7 +13,6 @@ func InitializeIndex(tableName string, indexName string, clustered bool) error {
 
 /*
 There is two cases for the add index entry function
-
 1- clustered index or prefound index
   your dont need the index name , you just need the table name and the key and the page ID
 and you will iterate over all indexes and add the key to its B+ tree
@@ -21,19 +20,16 @@ and you will iterate over all indexes and add the key to its B+ tree
 2- non-clustered index
   the table is already has a data in this cloumn do you need to scan data
    and add the key to the B+ tree of this specific index
-
 */
 
-func AddIndexEntry(tableName string, indexName string, key []byte, pageID int32) error {
+// the first function to add entry to a specific index of the table
+func AddEntryToIndex(tableName string, indexName string, key []byte, pageID int32) error {
 
-	// read the index metadata to know all the indexes for the table
-	if indexName == "" {
-		// clustered index
-		// iterate over all indexes and add the key to its B+ tree
-	} else {
-		// non-clustered index
-		// add the key to the B+ tree of this specific index
-	}
+	return nil
+}
+
+// the second function to add entry to all indexes of the table
+func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 
 	return nil
 }
@@ -65,7 +61,7 @@ func ScanIndexRange(tableName string, indexName string, startKey []byte, endKey 
 	// open the index and scan the range
 }
 
-//DeleteIndex deletes the index for a given table, following the same logic of the add index entry function
+// DeleteIndex deletes the index for a given table, following the same logic of the add index entry function
 func DeleteIndex(tableName string, indexName string) error {
 
 	// read the indexes meta to know all the indexes for the table
@@ -126,10 +122,10 @@ func CheckIndexRebuild(tableName string) error {
 	     iterate over all indexes and check if the index needs to be rebuilt
 		 if the index needs to be rebuilt, call the rebuild index function
 
-		 This fucntion to be called after each update or delete operation happens on the table , 
+		 This fucntion to be called after each update or delete operation happens on the table ,
 
 		 --
-		NOte : i know it is not the best solution to call this function after each update or delete operation 
+		NOte : i know it is not the best solution to call this function after each update or delete operation
 				but it is the best solution for the first submission
 
 		 --
