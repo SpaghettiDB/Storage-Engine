@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/src/heapmanager"
+	"database/src/indexmanager"
 	"fmt"
 )
 
@@ -15,9 +16,11 @@ func main() {
 	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
 	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
 	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-
 	rows := heapmanager.GetPageRowsFromHeap("student", 0)
-
 	fmt.Println(rows)
+
+	//------------------------------------------------------------------------------------------
+
+	indexmanager.PlayGround()
 
 }
