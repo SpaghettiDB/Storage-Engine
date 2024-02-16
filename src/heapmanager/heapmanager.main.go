@@ -82,6 +82,7 @@ func CreateHeap(name string) error {
 }
 
 // adds a new row to the heap with name.
+// TODO : should return the page number where the row was added.
 func AddRowToHeap(name string, row []byte) {
 	//open the file
 	//read the header
