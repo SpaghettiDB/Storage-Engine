@@ -1,6 +1,7 @@
 package indexmanager
 
 import (
+	"database/src/indexmanager"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -224,10 +225,8 @@ func GetIndexHeight(tableName string, indexName string) (int32, error) {
 	*/
 }
 
-// now we wanna optimize the index when it reach a certain case that we need to rebuild it
-// we can use the following function to rebuild the index
 
-func CheckIndexRebuild(tableName string) error {
+func CheckIndexRebuild(tableName string) (string , error) {
 
 	/* read the indexes meta to know all the indexes for the table
 	     iterate over all indexes and check if the index needs to be rebuilt
@@ -242,12 +241,11 @@ func CheckIndexRebuild(tableName string) error {
 		 --
 	*/
 
-	return nil
+	return "", nil
 }
 
 
-// RebuildIndex rebuilds the index for a given table and index name.
-// It can be used for optimization or after significant data changes.
+// [-- TO BE IMPLEMENTED --]
 func RebuildIndex(tableName string, indexName string) error {
 	return nil
 
