@@ -1,15 +1,110 @@
 package indexmanager
 
-const IndexRebuildThreshold = 30 // 30% of the index is deleted or updated
+import (
+	"encoding/binary"
+	"fmt"
+	"os"
+	"path"
+	"sync"
+
+	"github.com/krasun/fbptree"
+)
+
+const (
+	IndexRebuildThreshold = 30
+	indexPageSize         = 4096
+	indexMetadataSize     = 20
+	metaDataFileName      = "meta.data"
+)
+
+var metaFilEMutex sync.Mutex
 
 // InitializeIndex creates a new index for a given table and index name.
 // init the index metadata and data structures
-func InitializeIndex(tableName string, indexName string, clustered bool) error {
+func InitializeIndex(tableName string, indexName string, ColumnName string, clustered bool) error {
+	// Construct index directory path
+	indexDir := path.Join("indexes", tableName)
+	
+	// Create index directory if it doesn't exist
+	if _, err := os.Stat(indexDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(indexDir, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create index directory: %w", err)
+		}
+	}
 
-	// create the index metadata
-	// create the index data structures
+	// Create index file
+	indexPath := path.Join(indexDir, indexName+".data")
+	if _, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500)); err != nil {
+		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
+	}
+
+	// Check if the metadata file exists, if not, it is a clustered index
+	metaDataPath := path.Join(indexDir, metaDataFileName)
+	if _, err := os.Stat(metaDataPath); os.IsNotExist(err) {
+		metaFile, err := os.Create(metaDataPath)
+		if err != nil {
+			return fmt.Errorf("failed to create metadata file: %w", err)
+		}
+		defer metaFile.Close()
+
+		// Write table name and index number to the header
+		header := make([]byte, 8)
+		copy(header[:4], []byte(tableName))
+		binary.BigEndian.PutUint32(header[4:], uint32(0))
+
+		// Write the header to the file
+		if _, err := metaFile.WriteAt(header, 0); err != nil {
+			return fmt.Errorf("error writing header to metadata file: %w", err)
+		}
+	}
+
+	// Open the metadata file
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Read the header
+	header := make([]byte, 8)
+	if _, err := metaFile.ReadAt(header, 0); err != nil {
+		return fmt.Errorf("error reading the metadata file: %w", err)
+	}
+
+	// Get the number of indexes
+	indexesCount := binary.BigEndian.Uint32(header[4:])
+
+	// Write the index metadata to the file
+	indexMetadataBytes := make([]byte, indexMetadataSize)
+	copy(indexMetadataBytes[:4], []byte(indexName))
+	copy(indexMetadataBytes[4:8], []byte(ColumnName))
+	binary.BigEndian.PutUint32(indexMetadataBytes[8:], uint32(0))
+	binary.BigEndian.PutUint32(indexMetadataBytes[12:], uint32(0))
+	binary.BigEndian.PutUint32(indexMetadataBytes[16:], uint32(0))
+
+	// Write the index metadata to the file
+	if _, err := metaFile.WriteAt(indexMetadataBytes, int64(8+indexesCount*indexMetadataSize)); err != nil {
+		return fmt.Errorf("error writing index metadata to metadata file: %w", err)
+	}
+
+	// Update the header
+	binary.BigEndian.PutUint32(header[4:], indexesCount+1)
+	if _, err := metaFile.WriteAt(header, 0); err != nil {
+		return fmt.Errorf("error updating header of metadata file: %w", err)
+	}
+
+	// Flush changes to disk
+	if err := metaFile.Sync(); err != nil {
+		return fmt.Errorf("error syncing metadata file: %w", err)
+	}
+
 	return nil
 }
+
 
 /*
 There is two cases for the add index entry function

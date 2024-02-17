@@ -22,7 +22,7 @@ The index manager module maintains metadata for all indexes in a file with the f
 ...
 
 ## Index Structure
-since the index manager module uses the B+ tree data structure to store the index, the index is a tree with the following path: `indexes/Table_Name/Index_Name`.
+since the index manager module uses the B+ tree data structure to store the index, the index is a tree with the following path: `indexes/Table_Name/Index_Name.data`.
 
 
 ## code of conduct
