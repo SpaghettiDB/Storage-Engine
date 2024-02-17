@@ -146,8 +146,23 @@ func RemoveIndexEntry(tableName string, indexName string, key []byte) error {
 
 // SearchIndexEntry searches for an entry in the index for a given key, returning the page id.
 func FindIndexEntry(tableName string, indexName string, key []byte) (int32, error) {
-	// reacch the index path and open the tree then search for the key
-	return 0, nil
+	// open the index and search for the key
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	if err != nil {
+		return 0, fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
+	}
+	defer tree.Close()
+	// search for the key
+	PageID, ok, err := tree.Get(key)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get value: %w", err)
+	}
+	if !ok {	
+		return 0, fmt.Errorf("failed to find value")
+	}
+
+	return int32(binary.BigEndian.Uint32(PageID)), nil
 }
 
 // ScanIndexRange scans the index for entries within a specified key range, returning a list of page IDs corresponding to keys within the range.
