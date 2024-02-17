@@ -1,7 +1,6 @@
 package indexmanager
 
 import (
-	"database/src/indexmanager"
 	"encoding/binary"
 	"fmt"
 	"os"
