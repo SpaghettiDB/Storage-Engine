@@ -207,11 +207,12 @@ func UpdateIndexMetadata(tableName string, indexName string, indexMetadata []byt
 // GetIndexSize returns the size of the index in bytes.
 // It should return the size of the index data structures.
 func GetIndexSize(tableName string, indexName string) (int32, error) {
-	return 0, nil
-	/*
-		check if the index exists
-		return the size of the index
-	*/
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	fileInfo, err := os.Stat(indexPath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get index size: %w", err)
+	}
+	return int32(fileInfo.Size()), nil
 }
 
 // GetIndexHeight returns the height of the index.
@@ -244,23 +245,6 @@ func CheckIndexRebuild(tableName string) error {
 	return nil
 }
 
-// // GetIndexEntriesCount returns the number of entries in the index.
-// func GetIndexEntriesCount(tableName string, indexName string) (int64, error) {
-// 	return 0, nil
-// 	/*
-// 		check if the index exists
-// 		return the number of entries in the index
-// 	*/
-// }
-
-// // count updated and deleted entries
-// func CountUpdatedDeletedEntries(tableName string, indexName string) (int32, error) {
-// 	return 0, nil
-// 	/*
-// 		check if the index exists
-// 		return the number of updated and deleted entries in the index
-// 	*/
-// }
 
 // RebuildIndex rebuilds the index for a given table and index name.
 // It can be used for optimization or after significant data changes.
