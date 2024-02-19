@@ -129,17 +129,69 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 	return nil
 }
 
-// RemoveIndexEntry removes an entry from the index for a given key.
-// same as the add index entry function
-func RemoveIndexEntry(tableName string, indexName string, key []byte) error {
+// RemoveEntryFromTableIndexes removes an entry from all indexes for a given key.
+func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
+	indexes , err := GetIndexesMetadata(tableName)
+	if err != nil {
+		return fmt.Errorf("failed to get indexes metadata: %w", err)
+	}
 
-	// read the indexes meta to know all the indexes for the table
-	if indexName == "" {
-		// clustered index
-		// iterate over all indexes and remove the key from its B+ tree
-	} else {
-		// non-clustered index
-		// remove the key from the B+ tree of this specific index
+	indexDir := path.Join("indexes", tableName)
+	metaDataPath := path.Join(indexDir, metaDataFileName)
+
+	// Open the metadata file
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	for i, index := range indexes {
+		indexName := string(index[:4])
+		if err := RemoveEntryFromIndex(tableName, indexName, key); err != nil {
+			return fmt.Errorf("failed to remove entry from index %s: %w", indexName, err)
+		}
+
+		updatesCount := binary.BigEndian.Uint32(index[8:])
+		keysCount := binary.BigEndian.Uint32(index[16:])
+		updatesCount++
+		keysCount--
+		binary.BigEndian.PutUint32(index[8:], updatesCount)
+		binary.BigEndian.PutUint32(index[16:], keysCount)
+
+		// Lock mutex to synchronize access to metadata file
+		metaFilEMutex.Lock()
+		defer metaFilEMutex.Unlock()
+
+		// Write the index metadata to the file
+		if _, err := metaFile.WriteAt(index, int64(8+int32(i)*indexMetadataSize)); err != nil {
+			return fmt.Errorf("error writing index metadata to metadata file: %w", err)
+		}
+
+		// Flush changes to disk
+		if err := metaFile.Sync(); err != nil {
+			return fmt.Errorf("error syncing metadata file: %w", err)
+		}
+	}
+	return nil
+}
+
+
+// RemoveEntryFromIndex removes an entry from a specific index for a given key.
+func RemoveEntryFromIndex(tableName string, indexName string, key []byte) error {
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	if err != nil {
+		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
+	}
+	defer tree.Close()
+
+	_, ok, err := tree.Delete(key)
+	if err != nil {
+		return fmt.Errorf("failed to delete value: %w", err)
+	} 
+	if !ok {
+		return fmt.Errorf("failed to find value to delete")
 	}
 	return nil
 }
@@ -188,10 +240,41 @@ func DeleteIndex(tableName string, indexName string) error {
 
 // GetIndexMetadata returns the metadata for a given table.
 func GetIndexesMetadata(tableName string) ([][]byte, error) {
-	return nil, nil
-	/*
-		return the indexes metadata for the table
-	*/
+	// read the indexes meta to know all the indexes for the table
+	indexDir := path.Join("indexes", tableName)
+	metaDataPath := path.Join(indexDir, metaDataFileName)
+
+	// Open the metadata file
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Read the header
+	header := make([]byte, 8)
+	if _, err := metaFile.ReadAt(header, 0); err != nil {
+		return nil, fmt.Errorf("error reading the metadata file: %w", err)
+	}
+
+	// Get the number of indexes
+	indexesCount := binary.BigEndian.Uint32(header[4:])
+	indexesMetadata := make([][]byte, indexesCount)
+
+	// Read the indexes metadata
+	for i := uint32(0); i < indexesCount; i++ {
+		indexMetadata := make([]byte, indexMetadataSize)
+		if _, err := metaFile.ReadAt(indexMetadata, int64(8+i*indexMetadataSize)); err != nil {
+			return nil, fmt.Errorf("error reading index metadata from metadata file: %w", err)
+		}
+		indexesMetadata[i] = indexMetadata
+	}
+
+	return indexesMetadata, nil
 }
 
 // update the index metadata
