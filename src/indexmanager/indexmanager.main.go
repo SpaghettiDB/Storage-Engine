@@ -201,19 +201,9 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 		return fmt.Errorf("failed to get indexes metadata: %w", err)
 	}
 
-	indexDir := path.Join("indexes", tableName)
-	metaDataPath := path.Join(indexDir, metaDataFileName)
-
-	// Open the metadata file
-	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
-	if err != nil {
-		return fmt.Errorf("error opening the metadata file: %w", err)
-	}
-	defer metaFile.Close()
-
 	for i, index := range indexes {
 		indexName := string(index[:4])
-		if err := RemoveEntryFromIndex(tableName, indexName, key); err != nil {
+		if err := removeEntryFromIndex(tableName, indexName, key); err != nil {
 			return fmt.Errorf("failed to remove entry from index %s: %w", indexName, err)
 		}
 
@@ -224,25 +214,44 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 		binary.BigEndian.PutUint32(index[8:], updatesCount)
 		binary.BigEndian.PutUint32(index[16:], keysCount)
 
-		// Lock mutex to synchronize access to metadata file
-		metaFilEMutex.Lock()
-		defer metaFilEMutex.Unlock()
-
-		// Write the index metadata to the file
-		if _, err := metaFile.WriteAt(index, int64(8+int32(i)*indexMetadataSize)); err != nil {
-			return fmt.Errorf("error writing index metadata to metadata file: %w", err)
-		}
-
-		// Flush changes to disk
-		if err := metaFile.Sync(); err != nil {
-			return fmt.Errorf("error syncing metadata file: %w", err)
-		}
+		indexes[i] = index
 	}
+
+	indexDir := path.Join("indexes", tableName)
+	metaDataPath := path.Join(indexDir, metaDataFileName)
+
+	// Open the metadata file
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// flat the indexes metadata
+	flatIndexesMetadata := make([]byte, 0)
+	for _, index := range indexes {
+		flatIndexesMetadata = append(flatIndexesMetadata, index...)
+	}
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Write the indexes metadata to the file
+	if _, err := metaFile.WriteAt(flatIndexesMetadata, 8); err != nil {
+		return fmt.Errorf("error writing indexes metadata to metadata file: %w", err)
+	}
+
+	// Flush changes to disk
+	if err := metaFile.Sync(); err != nil {
+		return fmt.Errorf("error syncing metadata file: %w", err)
+	}
+	
 	return nil
 }
 
 // RemoveEntryFromIndex removes an entry from a specific index for a given key.
-func RemoveEntryFromIndex(tableName string, indexName string, key []byte) error {
+func removeEntryFromIndex(tableName string, indexName string, key []byte) error {
 	indexPath := path.Join("indexes", tableName, indexName+".data")
 	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
 	if err != nil {
