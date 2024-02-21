@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/src/indexmanager"
+	"encoding/binary"
+	"fmt"
 )
 
 func main() {
@@ -13,10 +15,30 @@ func main() {
 
 	// indexmanager.PlayGround()
 
-	// indexmanager.InitializeIndex("test", "test", "test", false)
-	err := indexmanager.AddEntryToTableIndexes("test", []byte("key"), 5)
+	indexmanager.InitializeIndex("test", "test", "test", false)
+
+	//convert number 1 to byte array
+
+	var b []byte = make([]byte, 4)
+	binary.BigEndian.PutUint32(b, 1)
+	indexmanager.AddEntryToTableIndexes("test", b, 1)
+
+	binary.BigEndian.PutUint32(b, 2)
+	indexmanager.AddEntryToTableIndexes("test", b, 2)
+
+	binary.BigEndian.PutUint32(b, 3)
+	indexmanager.AddEntryToTableIndexes("test", b, 3)
+
+	binary.BigEndian.PutUint32(b, 2)
+	var c []byte = make([]byte, 4)
+	binary.BigEndian.PutUint32(c, 3)
+
+	result, err := indexmanager.ScanIndexRange("test", "test", b, c)
+
 	if err != nil {
-		println(err.Error())
+		fmt.Println(err)
+	} else {
+		fmt.Println(result)
 	}
 
 }
