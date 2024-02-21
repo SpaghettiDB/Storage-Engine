@@ -3,15 +3,14 @@ package indexmanager
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/krasun/fbptree"
 	"os"
 	"path"
 	"sync"
-
-	"github.com/krasun/fbptree"
 )
 
 const (
-	IndexRebuildThreshold = 30
+	// IndexRebuildThreshold = 30
 	indexPageSize         = 4096
 	indexMetadataSize     = 52
 	metaDataFileName      = "meta.data"
@@ -48,9 +47,9 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 		defer metaFile.Close()
 
 		// Write table name and index number to the header
-		header := make([]byte, 8)
-		copy(header[:4], []byte(tableName))
-		binary.BigEndian.PutUint32(header[4:], uint32(0))
+		header := make([]byte, 24)
+		copy(header[:20], []byte(tableName))
+		binary.BigEndian.PutUint32(header[20:], uint32(0))
 
 		// Write the header to the file
 		if _, err := metaFile.WriteAt(header, 0); err != nil {
@@ -70,21 +69,21 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 	defer metaFilEMutex.Unlock()
 
 	// Read the header
-	header := make([]byte, 8)
+	header := make([]byte, 24)
 	if _, err := metaFile.ReadAt(header, 0); err != nil {
 		return fmt.Errorf("error reading the metadata file: %w", err)
 	}
 
 	// Get the number of indexes
-	indexesCount := binary.BigEndian.Uint32(header[4:])
+	indexesCount := binary.BigEndian.Uint32(header[20:])
 
 	// Write the index metadata to the file
 	indexMetadataBytes := make([]byte, indexMetadataSize)
-	copy(indexMetadataBytes[:4], []byte(indexName))
-	copy(indexMetadataBytes[4:8], []byte(ColumnName))
-	binary.BigEndian.PutUint32(indexMetadataBytes[8:], uint32(0))
-	binary.BigEndian.PutUint32(indexMetadataBytes[12:], uint32(0))
-	binary.BigEndian.PutUint32(indexMetadataBytes[16:], uint32(0))
+	copy(indexMetadataBytes[:20], []byte(indexName))
+	copy(indexMetadataBytes[20:40], []byte(ColumnName))
+	binary.BigEndian.PutUint32(indexMetadataBytes[40:44], uint32(0))
+	binary.BigEndian.PutUint32(indexMetadataBytes[44:48], uint32(0))
+	binary.BigEndian.PutUint32(indexMetadataBytes[48:52], uint32(0))
 
 	// Write the index metadata to the file
 	if _, err := metaFile.WriteAt(indexMetadataBytes, int64(8+indexesCount*indexMetadataSize)); err != nil {
@@ -92,7 +91,7 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 	}
 
 	// Update the header
-	binary.BigEndian.PutUint32(header[4:], indexesCount+1)
+	binary.BigEndian.PutUint32(header[20:], indexesCount+1)
 	if _, err := metaFile.WriteAt(header, 0); err != nil {
 		return fmt.Errorf("error updating header of metadata file: %w", err)
 	}
@@ -246,7 +245,7 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 	if err := metaFile.Sync(); err != nil {
 		return fmt.Errorf("error syncing metadata file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -380,6 +379,7 @@ func GetIndexHeight(tableName string, indexName string) (int32, error) {
 	*/
 }
 
+// [-- TO BE IMPLEMENTED --]
 func CheckIndexRebuild(tableName string) (string, error) {
 
 	/* read the indexes meta to know all the indexes for the table
