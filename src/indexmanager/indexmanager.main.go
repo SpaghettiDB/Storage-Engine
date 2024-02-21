@@ -33,7 +33,7 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 
 	// Create index file
 	indexPath := path.Join(indexDir, indexName+".data")
-	if _, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500)); err != nil {
+	if _, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(128)); err != nil {
 		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
 
