@@ -13,7 +13,7 @@ import (
 const (
 	IndexRebuildThreshold = 30
 	indexPageSize         = 4096
-	indexMetadataSize     = 20
+	indexMetadataSize     = 52
 	metaDataFileName      = "meta.data"
 )
 

@@ -6,7 +6,7 @@ The index manager module is implemented using the B+ tree data structure. The B+
 ## Index Metadata Structure
 The index manager module maintains metadata for all indexes in a file with the following path: `indexes/Table_Name/meta.data`. The metadata includes information such as the name of the index, the data type of the key, and the file offset of the root node of the B+ tree. This metadata is stored in a system catalog table, which is used to keep track of all the indexes in the database.
 
-[Table Name Length (4 bytes)][Number of Indexes (4 bytes)]
+[Table Name Length (20 bytes)][Number of Indexes (4 bytes)]
 
 [Index 1]
 [Index 2]
@@ -14,8 +14,8 @@ The index manager module maintains metadata for all indexes in a file with the f
 [Index N]
 
 [Index Structure]
-- Index Name Length (4 bytes)
-- Column Name Length (4 bytes)
+- Index Name  (20 bytes)
+- Column Name  (20 bytes)
 - updatesCount (4 bytes)
 - Indexversion (4 bytes)
 - number of keys (4 bytes)
