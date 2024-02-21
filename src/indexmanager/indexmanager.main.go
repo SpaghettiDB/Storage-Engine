@@ -141,6 +141,7 @@ func addEntryToIndex(tableName string, indexName string, key []byte, pageID int3
 		if _, _, err := tree.Put(key, pageIDBytes); err != nil {
 			return fmt.Errorf("failed to insert value: %w", err)
 		}
+
 	} else {
 		return fmt.Errorf("the key already exists in the index")
 	}
@@ -166,8 +167,6 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 		keysCount++
 		binary.BigEndian.PutUint32(index[16:], keysCount)
 	}
-
-	fmt.Println(indexes)
 
 	// update the index metadata
 	// open the metadata file
@@ -276,6 +275,7 @@ func FindIndexEntry(tableName string, indexName string, key []byte) (int32, erro
 	if err != nil {
 		return 0, fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
+
 	defer tree.Close()
 	// search for the key
 	PageID, ok, err := tree.Get(key)
@@ -291,7 +291,38 @@ func FindIndexEntry(tableName string, indexName string, key []byte) (int32, erro
 
 // ScanIndexRange scans the index for entries within a specified key range, returning a list of page IDs corresponding to keys within the range.
 func ScanIndexRange(tableName string, indexName string, startKey []byte, endKey []byte) ([]int32, error) {
-	return nil, nil
+	//convert the start and end key to int32
+	// open the index and scan the range
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
+	}
+	defer tree.Close()
+
+	startKeyInt32 := binary.BigEndian.Uint32(startKey)
+	endKeyInt32 := binary.BigEndian.Uint32(endKey)
+
+	//loop from start to end and get the key from the index
+
+	result := make([]int32, 0)
+	for i := startKeyInt32; i <= endKeyInt32; i++ {
+
+		//convert i to byte array
+		key := make([]byte, 4)
+		binary.BigEndian.PutUint32(key, i)
+
+		pageId, ok, err := tree.Get(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get value: %w", err)
+		}
+		if ok {
+			//convert the page id to int32
+			result = append(result, int32(binary.BigEndian.Uint32(pageId)))
+		}
+	}
+
+	return result, nil
 	// open the index and scan the range
 }
 
