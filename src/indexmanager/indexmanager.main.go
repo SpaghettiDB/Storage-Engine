@@ -24,7 +24,7 @@ var metaFilEMutex sync.Mutex
 func InitializeIndex(tableName string, indexName string, ColumnName string, clustered bool) error {
 	// Construct index directory path
 	indexDir := path.Join("indexes", tableName)
-	
+
 	// Create index directory if it doesn't exist
 	if _, err := os.Stat(indexDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(indexDir, os.ModePerm); err != nil {
@@ -105,7 +105,6 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 	return nil
 }
 
-
 /*
 There is two cases for the add index entry function
 1- clustered index or prefound index
@@ -118,20 +117,86 @@ and you will iterate over all indexes and add the key to its B+ tree
 */
 
 // the first function to add entry to a specific index of the table
-func AddEntryToIndex(tableName string, indexName string, key []byte, pageID int32) error {
+func addEntryToIndex(tableName string, indexName string, key []byte, pageID int32) error {
+
+	//open the index file if it exists
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	if err != nil {
+		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
+	}
+	defer tree.Close()
+
+	// add the key to the index
+	//make the page id array of three bytes using big endian
+	pageIDBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(pageIDBytes, uint32(pageID))
+
+	//get the key first to check if it exists
+	_, ok, err := tree.Get(key)
+	if err != nil {
+		return fmt.Errorf("failed to get value: %w", err)
+	}
+
+	if !ok {
+		if _, _, err := tree.Put(key, pageIDBytes); err != nil {
+			return fmt.Errorf("failed to insert value: %w", err)
+		}
+	} else {
+		return fmt.Errorf("the key already exists in the index")
+	}
 
 	return nil
 }
 
 // the second function to add entry to all indexes of the table
 func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
+	indexes, err := GetIndexesMetadata(tableName)
 
+	if err != nil {
+		return fmt.Errorf("failed to get indexes metadata: %w", err)
+	}
+
+	for _, index := range indexes {
+		indexName := string(index[:4])
+		if err := addEntryToIndex(tableName, indexName, key, pageID); err != nil {
+			return fmt.Errorf("failed to add entry to index %s: %w", indexName, err)
+		}
+
+		keysCount := binary.BigEndian.Uint32(index[16:])
+		keysCount++
+		binary.BigEndian.PutUint32(index[16:], keysCount)
+	}
+
+	fmt.Println(indexes)
+
+	// update the index metadata
+	// open the metadata file
+	metaDataPath := path.Join("indexes", tableName, metaDataFileName)
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Write the index metadata to the file
+
+	//flatten the indexes array
+	flatIndexes := make([]byte, 0)
+	for _, index := range indexes {
+		flatIndexes = append(flatIndexes, index...)
+	}
+	metaFile.WriteAt(flatIndexes, 8)
 	return nil
 }
 
 // RemoveEntryFromTableIndexes removes an entry from all indexes for a given key.
 func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
-	indexes , err := GetIndexesMetadata(tableName)
+	indexes, err := GetIndexesMetadata(tableName)
 	if err != nil {
 		return fmt.Errorf("failed to get indexes metadata: %w", err)
 	}
@@ -176,7 +241,6 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 	return nil
 }
 
-
 // RemoveEntryFromIndex removes an entry from a specific index for a given key.
 func RemoveEntryFromIndex(tableName string, indexName string, key []byte) error {
 	indexPath := path.Join("indexes", tableName, indexName+".data")
@@ -189,7 +253,7 @@ func RemoveEntryFromIndex(tableName string, indexName string, key []byte) error 
 	_, ok, err := tree.Delete(key)
 	if err != nil {
 		return fmt.Errorf("failed to delete value: %w", err)
-	} 
+	}
 	if !ok {
 		return fmt.Errorf("failed to find value to delete")
 	}
@@ -210,7 +274,7 @@ func FindIndexEntry(tableName string, indexName string, key []byte) (int32, erro
 	if err != nil {
 		return 0, fmt.Errorf("failed to get value: %w", err)
 	}
-	if !ok {	
+	if !ok {
 		return 0, fmt.Errorf("failed to find value")
 	}
 
@@ -307,8 +371,7 @@ func GetIndexHeight(tableName string, indexName string) (int32, error) {
 	*/
 }
 
-
-func CheckIndexRebuild(tableName string) (string , error) {
+func CheckIndexRebuild(tableName string) (string, error) {
 
 	/* read the indexes meta to know all the indexes for the table
 	     iterate over all indexes and check if the index needs to be rebuilt
@@ -325,7 +388,6 @@ func CheckIndexRebuild(tableName string) (string , error) {
 
 	return "", nil
 }
-
 
 // [-- TO BE IMPLEMENTED --]
 func RebuildIndex(tableName string, indexName string) error {
