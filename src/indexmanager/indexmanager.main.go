@@ -353,6 +353,7 @@ func DeleteIndex(tableName string, indexName string) error {
 		}
 		for _, idx := range indexes {
 			idxName := string(idx[:20])
+			idxName = strings.Trim(idxName, "\x00")
 			if err := deleteIndex(tableName, idxName); err != nil {
 				return fmt.Errorf("failed to delete index %s: %w", idxName, err)
 			}
@@ -397,7 +398,7 @@ func deleteIndex(tableName, indexName string) error {
 	// Find and remove the metadata of the deleted index
 	var updatedMetadata []byte
 	for _, idx := range indexes {
-		if string(idx[:20]) != indexName {
+		if strings.Trim(string(idx[:20]), "\x00") != indexName {
 			updatedMetadata = append(updatedMetadata, idx...)
 		}
 	}
@@ -513,6 +514,7 @@ func getIndexOffset(tableName string, indexName string) int64 {
 			return 0 // Return 0 in case of error
 		}
 		existingIndexName := string(indexMetadata[:20])
+		existingIndexName = strings.Trim(existingIndexName, "\x00")
 		if existingIndexName == indexName {
 			return indexOffset // Return the offset of the index
 		}
