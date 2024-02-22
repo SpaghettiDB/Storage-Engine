@@ -3,10 +3,11 @@ package indexmanager
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/krasun/fbptree"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/krasun/fbptree"
 )
 
 const (
@@ -86,7 +87,7 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 	binary.BigEndian.PutUint32(indexMetadataBytes[48:52], uint32(0))
 
 	// Write the index metadata to the file
-	if _, err := metaFile.WriteAt(indexMetadataBytes, int64(8+indexesCount*indexMetadataSize)); err != nil {
+	if _, err := metaFile.WriteAt(indexMetadataBytes, int64(24+indexesCount*indexMetadataSize)); err != nil {
 		return fmt.Errorf("error writing index metadata to metadata file: %w", err)
 	}
 
@@ -200,17 +201,17 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 	}
 
 	for i, index := range indexes {
-		indexName := string(index[:4])
+		indexName := string(index[:20])
 		if err := removeEntryFromIndex(tableName, indexName, key); err != nil {
 			return fmt.Errorf("failed to remove entry from index %s: %w", indexName, err)
 		}
 
-		updatesCount := binary.BigEndian.Uint32(index[8:])
-		keysCount := binary.BigEndian.Uint32(index[16:])
+		updatesCount := binary.BigEndian.Uint32(index[40:44])
+		keysCount := binary.BigEndian.Uint32(index[48:52])
 		updatesCount++
 		keysCount--
-		binary.BigEndian.PutUint32(index[8:], updatesCount)
-		binary.BigEndian.PutUint32(index[16:], keysCount)
+		binary.BigEndian.PutUint32(index[40:44], updatesCount)
+		binary.BigEndian.PutUint32(index[48:52], keysCount)
 
 		indexes[i] = index
 	}
@@ -236,7 +237,7 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 	defer metaFilEMutex.Unlock()
 
 	// Write the indexes metadata to the file
-	if _, err := metaFile.WriteAt(flatIndexesMetadata, 8); err != nil {
+	if _, err := metaFile.WriteAt(flatIndexesMetadata, 24); err != nil {
 		return fmt.Errorf("error writing indexes metadata to metadata file: %w", err)
 	}
 
@@ -359,19 +360,19 @@ func GetIndexesMetadata(tableName string) ([][]byte, error) {
 	defer metaFilEMutex.Unlock()
 
 	// Read the header
-	header := make([]byte, 8)
+	header := make([]byte, 24)
 	if _, err := metaFile.ReadAt(header, 0); err != nil {
 		return nil, fmt.Errorf("error reading the metadata file: %w", err)
 	}
 
 	// Get the number of indexes
-	indexesCount := binary.BigEndian.Uint32(header[4:])
+	indexesCount := binary.BigEndian.Uint32(header[20:])
 	indexesMetadata := make([][]byte, indexesCount)
 
 	// Read the indexes metadata
 	for i := uint32(0); i < indexesCount; i++ {
 		indexMetadata := make([]byte, indexMetadataSize)
-		if _, err := metaFile.ReadAt(indexMetadata, int64(8+i*indexMetadataSize)); err != nil {
+		if _, err := metaFile.ReadAt(indexMetadata, int64(24+i*indexMetadataSize)); err != nil {
 			return nil, fmt.Errorf("error reading index metadata from metadata file: %w", err)
 		}
 		indexesMetadata[i] = indexMetadata
