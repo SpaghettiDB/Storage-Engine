@@ -15,7 +15,7 @@ func main() {
 
 	// indexmanager.PlayGround()
 
-	indexmanager.InitializeIndex("test", "test", "test", false)
+	// indexmanager.InitializeIndex("test", "test", "test", false)
 
 	//scan test -------------------------------------------------------------------
 
@@ -29,11 +29,24 @@ func main() {
 	binary.BigEndian.PutUint32(b, 3)
 	indexmanager.AddEntryToTableIndexes("test", b, 3)
 
-	binary.BigEndian.PutUint32(b, 2)
+	binary.BigEndian.PutUint32(b, 1)
 	var c []byte = make([]byte, 4)
 	binary.BigEndian.PutUint32(c, 3)
 
+	d := make([]byte, 4)
+	binary.BigEndian.PutUint32(d, 2)
+
 	result, err := indexmanager.ScanIndexRange("test", "test", b, c)
+
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(result)
+	}
+
+	indexmanager.RemoveEntryFromTableIndexes("test", d)
+
+	result, err = indexmanager.ScanIndexRange("test", "test", b, c)
 
 	if err != nil {
 		fmt.Println(err)

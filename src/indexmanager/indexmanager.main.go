@@ -271,13 +271,12 @@ func removeEntryFromIndex(tableName string, indexName string, key []byte) error 
 	}
 	defer tree.Close()
 
-	_, ok, err := tree.Delete(key)
+	_, _, err = tree.Delete(key) 
+
 	if err != nil {
 		return fmt.Errorf("failed to delete value: %w", err)
 	}
-	if !ok {
-		return fmt.Errorf("failed to find value to delete")
-	}
+
 	return nil
 }
 
