@@ -17,7 +17,7 @@ func main() {
 
 	indexmanager.InitializeIndex("test", "test", "test", false)
 
-	//convert number 1 to byte array
+	//scan test -------------------------------------------------------------------
 
 	var b []byte = make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 1)

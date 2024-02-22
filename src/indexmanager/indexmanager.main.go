@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/krasun/fbptree"
@@ -15,6 +16,7 @@ const (
 	indexPageSize     = 4096
 	indexMetadataSize = 52
 	metaDataFileName  = "meta.data"
+	indexOrder        = 128
 )
 
 var metaFilEMutex sync.Mutex
@@ -34,7 +36,7 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 
 	// Create index file
 	indexPath := path.Join(indexDir, indexName+".data")
-	if _, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(128)); err != nil {
+	if _, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder)); err != nil {
 		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
 
@@ -120,8 +122,10 @@ and you will iterate over all indexes and add the key to its B+ tree
 func addEntryToIndex(tableName string, indexName string, key []byte, pageID int32) error {
 
 	//open the index file if it exists
-	indexPath := path.Join("indexes", tableName, indexName+".data")
-	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	indexDir := path.Join("indexes", tableName)
+	indexPath := path.Join(indexDir, indexName+".data")
+
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder))
 	if err != nil {
 		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
@@ -131,7 +135,6 @@ func addEntryToIndex(tableName string, indexName string, key []byte, pageID int3
 	//make the page id array of three bytes using big endian
 	pageIDBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(pageIDBytes, uint32(pageID))
-
 	//get the key first to check if it exists
 	_, ok, err := tree.Get(key)
 	if err != nil {
@@ -144,6 +147,7 @@ func addEntryToIndex(tableName string, indexName string, key []byte, pageID int3
 		}
 
 	} else {
+
 		return fmt.Errorf("the key already exists in the index")
 	}
 
@@ -160,6 +164,8 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 
 	for _, index := range indexes {
 		indexName := string(index[:20])
+		indexName = strings.Trim(indexName, "\x00")
+
 		if err := addEntryToIndex(tableName, indexName, key, pageID); err != nil {
 			return fmt.Errorf("failed to add entry to index %s: %w", indexName, err)
 		}
@@ -207,6 +213,8 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 
 	for i, index := range indexes {
 		indexName := string(index[:20])
+		indexName = strings.Trim(indexName, "\x00")
+
 		if err := removeEntryFromIndex(tableName, indexName, key); err != nil {
 			return fmt.Errorf("failed to remove entry from index %s: %w", indexName, err)
 		}
@@ -257,7 +265,7 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 // RemoveEntryFromIndex removes an entry from a specific index for a given key.
 func removeEntryFromIndex(tableName string, indexName string, key []byte) error {
 	indexPath := path.Join("indexes", tableName, indexName+".data")
-	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder))
 	if err != nil {
 		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
@@ -277,7 +285,7 @@ func removeEntryFromIndex(tableName string, indexName string, key []byte) error 
 func FindIndexEntry(tableName string, indexName string, key []byte) (int32, error) {
 	// open the index and search for the key
 	indexPath := path.Join("indexes", tableName, indexName+".data")
-	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder))
 	if err != nil {
 		return 0, fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
@@ -300,7 +308,7 @@ func ScanIndexRange(tableName string, indexName string, startKey []byte, endKey 
 	//convert the start and end key to int32
 	// open the index and scan the range
 	indexPath := path.Join("indexes", tableName, indexName+".data")
-	tree, err := fbptree.Open(indexPath, fbptree.PageSize(4096), fbptree.Order(500))
+	tree, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
