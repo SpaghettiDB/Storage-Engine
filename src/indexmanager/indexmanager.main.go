@@ -12,9 +12,9 @@ import (
 
 const (
 	// IndexRebuildThreshold = 30
-	indexPageSize         = 4096
-	indexMetadataSize     = 52
-	metaDataFileName      = "meta.data"
+	indexPageSize     = 4096
+	indexMetadataSize = 52
+	metaDataFileName  = "meta.data"
 )
 
 var metaFilEMutex sync.Mutex
@@ -339,10 +339,71 @@ func DeleteIndex(tableName string, indexName string) error {
 	if indexName == "" {
 		// clustered index
 		// iterate over all indexes and delete the index
+		indexes, err := GetIndexesMetadata(tableName)
+		if err != nil {
+			return fmt.Errorf("failed to get indexes metadata: %w", err)
+		}
+		for _, idx := range indexes {
+			idxName := string(idx[:20])
+			if err := deleteIndex(tableName, idxName); err != nil {
+				return fmt.Errorf("failed to delete index %s: %w", idxName, err)
+			}
+		}
 	} else {
 		// non-clustered index
 		// delete the index
+		if err := deleteIndex(tableName, indexName); err != nil {
+			return fmt.Errorf("failed to delete index %s: %w", indexName, err)
+		}
 	}
+	return nil
+
+}
+
+// Helper function to delete a specific index
+func deleteIndex(tableName, indexName string) error {
+	// Delete the index file
+	indexPath := path.Join("indexes", tableName, indexName+".data")
+	if err := os.Remove(indexPath); err != nil {
+		return fmt.Errorf("failed to delete index file %s: %w", indexPath, err)
+	}
+
+	// Remove the index metadata from the metadata file
+	metaDataPath := path.Join("indexes", tableName, metaDataFileName)
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Read the indexes metadata
+	indexes, err := GetIndexesMetadata(tableName)
+	if err != nil {
+		return fmt.Errorf("failed to get indexes metadata: %w", err)
+	}
+
+	// Find and remove the metadata of the deleted index
+	var updatedMetadata []byte
+	for _, idx := range indexes {
+		if string(idx[:20]) != indexName {
+			updatedMetadata = append(updatedMetadata, idx...)
+		}
+	}
+
+	// Write the updated indexes metadata to the file
+	if _, err := metaFile.WriteAt(updatedMetadata, 24); err != nil {
+		return fmt.Errorf("error writing updated indexes metadata to metadata file: %w", err)
+	}
+
+	// Flush changes to disk
+	if err := metaFile.Sync(); err != nil {
+		return fmt.Errorf("error syncing metadata file: %w", err)
+	}
+
 	return nil
 
 }
@@ -388,7 +449,69 @@ func GetIndexesMetadata(tableName string) ([][]byte, error) {
 
 // update the index metadata
 func UpdateIndexMetadata(tableName string, indexName string, indexMetadata []byte) error {
+	// Calculate the offset of the index metadata in the metadata file
+	indexMetadataOffset := int64(24) + getIndexOffset(tableName, indexName)
+
+	// Open the metadata file
+	metaDataPath := path.Join("indexes", tableName, metaDataFileName)
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening the metadata file: %w", err)
+	}
+	defer metaFile.Close()
+
+	// Lock mutex to synchronize access to metadata file
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
+
+	// Write the index metadata to the file
+	if _, err := metaFile.WriteAt(indexMetadata, indexMetadataOffset); err != nil {
+		return fmt.Errorf("error writing index metadata to metadata file: %w", err)
+	}
+
+	// Flush changes to disk
+	if err := metaFile.Sync(); err != nil {
+		return fmt.Errorf("error syncing metadata file: %w", err)
+	}
+
 	return nil
+}
+
+func getIndexOffset(tableName string, indexName string) int64 {
+	// Open the metadata file
+	metaDataPath := path.Join("indexes", tableName, metaDataFileName)
+	metaFile, err := os.OpenFile(metaDataPath, os.O_RDWR, 0644)
+	if err != nil {
+		return 0 // Return 0 in case of error
+	}
+	defer metaFile.Close()
+
+	// Read the header to get the number of indexes
+	header := make([]byte, 24)
+	if _, err := metaFile.ReadAt(header, 0); err != nil {
+		return 0 // Return 0 in case of error
+	}
+
+	// Get the number of indexes
+	indexesCount := binary.BigEndian.Uint32(header[20:])
+
+	// Calculate the offset of the specified index
+	indexOffset := int64(24 + indexesCount*indexMetadataSize)
+
+	// Search for the index in the metadata file
+	for i := uint32(0); i < indexesCount; i++ {
+		indexMetadata := make([]byte, indexMetadataSize)
+		if _, err := metaFile.ReadAt(indexMetadata, indexOffset); err != nil {
+			return 0 // Return 0 in case of error
+		}
+		existingIndexName := string(indexMetadata[:20])
+		if existingIndexName == indexName {
+			return indexOffset // Return the offset of the index
+		}
+		indexOffset += indexMetadataSize
+	}
+
+	return 0 // Return 0 if the index is not found
 }
 
 /*
