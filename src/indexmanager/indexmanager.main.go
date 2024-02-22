@@ -159,14 +159,14 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 	}
 
 	for _, index := range indexes {
-		indexName := string(index[:4])
+		indexName := string(index[:20])
 		if err := addEntryToIndex(tableName, indexName, key, pageID); err != nil {
 			return fmt.Errorf("failed to add entry to index %s: %w", indexName, err)
 		}
 
-		keysCount := binary.BigEndian.Uint32(index[16:])
+		keysCount := binary.BigEndian.Uint32(index[48:52])
 		keysCount++
-		binary.BigEndian.PutUint32(index[16:], keysCount)
+		binary.BigEndian.PutUint32(index[48:52], keysCount)
 	}
 
 	// update the index metadata
@@ -189,7 +189,12 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 	for _, index := range indexes {
 		flatIndexes = append(flatIndexes, index...)
 	}
-	metaFile.WriteAt(flatIndexes, 8)
+	metaFile.WriteAt(flatIndexes, 24)
+
+	// Flush changes to disk
+	if err := metaFile.Sync(); err != nil {
+		return fmt.Errorf("error syncing metadata file: %w", err)
+	}
 	return nil
 }
 
