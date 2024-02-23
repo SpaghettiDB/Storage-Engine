@@ -19,39 +19,27 @@ func main() {
 
 	//scan test -------------------------------------------------------------------
 
-	var b []byte = make([]byte, 4)
-	binary.BigEndian.PutUint32(b, 1)
-	indexmanager.AddEntryToTableIndexes("test", b, 1)
+	err := indexmanager.InitializeIndex("Student", "name", "name", false)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	binary.BigEndian.PutUint32(b, 2)
-	indexmanager.AddEntryToTableIndexes("test", b, 2)
-
-	binary.BigEndian.PutUint32(b, 3)
-	indexmanager.AddEntryToTableIndexes("test", b, 3)
-
-	binary.BigEndian.PutUint32(b, 1)
-	var c []byte = make([]byte, 4)
-	binary.BigEndian.PutUint32(c, 3)
+	err = indexmanager.InitializeIndex("Student", "id", "id", false)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	d := make([]byte, 4)
 	binary.BigEndian.PutUint32(d, 2)
 
-	result, err := indexmanager.ScanIndexRange("test", "test", b, c)
+	indexmanager.AddEntryToTableIndexes("Student", [][]byte{[]byte("mohammed"), d}, 2)
+
+	result, err := indexmanager.GetIndexSize("Student", "name")
 
 	if err != nil {
 		fmt.Println(err)
-	} else {
-		fmt.Println(result)
 	}
 
-	indexmanager.RemoveEntryFromTableIndexes("test", d)
-
-	result, err = indexmanager.ScanIndexRange("test", "test", b, c)
-
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(result)
-	}
+	fmt.Println(result)
 
 }

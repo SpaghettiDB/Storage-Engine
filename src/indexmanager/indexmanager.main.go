@@ -36,6 +36,8 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 
 	// Create index file
 	indexPath := path.Join(indexDir, indexName+".data")
+	fmt.Println(indexPath)
+
 	if _, err := fbptree.Open(indexPath, fbptree.PageSize(indexPageSize), fbptree.Order(indexOrder)); err != nil {
 		return fmt.Errorf("failed to open B+ tree %s: %w", indexPath, err)
 	}
@@ -155,18 +157,18 @@ func addEntryToIndex(tableName string, indexName string, key []byte, pageID int3
 }
 
 // the second function to add entry to all indexes of the table
-func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
+func AddEntryToTableIndexes(tableName string, keys [][]byte, pageID int32) error {
 	indexes, err := GetIndexesMetadata(tableName)
 
 	if err != nil {
 		return fmt.Errorf("failed to get indexes metadata: %w", err)
 	}
 
-	for _, index := range indexes {
+	for i, index := range indexes {
 		indexName := string(index[:20])
 		indexName = strings.Trim(indexName, "\x00")
 
-		if err := addEntryToIndex(tableName, indexName, key, pageID); err != nil {
+		if err := addEntryToIndex(tableName, indexName, keys[i], pageID); err != nil {
 			return fmt.Errorf("failed to add entry to index %s: %w", indexName, err)
 		}
 
@@ -205,8 +207,9 @@ func AddEntryToTableIndexes(tableName string, key []byte, pageID int32) error {
 }
 
 // RemoveEntryFromTableIndexes removes an entry from all indexes for a given key.
-func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
+func RemoveEntryFromTableIndexes(tableName string, keys [][]byte) error {
 	indexes, err := GetIndexesMetadata(tableName)
+
 	if err != nil {
 		return fmt.Errorf("failed to get indexes metadata: %w", err)
 	}
@@ -215,7 +218,7 @@ func RemoveEntryFromTableIndexes(tableName string, key []byte) error {
 		indexName := string(index[:20])
 		indexName = strings.Trim(indexName, "\x00")
 
-		if err := removeEntryFromIndex(tableName, indexName, key); err != nil {
+		if err := removeEntryFromIndex(tableName, indexName, keys[i]); err != nil {
 			return fmt.Errorf("failed to remove entry from index %s: %w", indexName, err)
 		}
 
@@ -271,7 +274,7 @@ func removeEntryFromIndex(tableName string, indexName string, key []byte) error 
 	}
 	defer tree.Close()
 
-	_, _, err = tree.Delete(key) 
+	_, _, err = tree.Delete(key)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete value: %w", err)
@@ -371,7 +374,12 @@ func DeleteIndex(tableName string, indexName string) error {
 // Helper function to delete a specific index
 func deleteIndex(tableName, indexName string) error {
 	// Delete the index file
-	indexPath := path.Join("indexes", tableName, indexName+".data")
+	//indexPath := path.Join("indexes", tableName, indexName+".data")
+
+	indexDir := path.Join("indexes", tableName)
+	indexPath := path.Join(indexDir, indexName+".data")
+	fmt.Println(indexPath)
+
 	if err := os.Remove(indexPath); err != nil {
 		return fmt.Errorf("failed to delete index file %s: %w", indexPath, err)
 	}
@@ -385,14 +393,15 @@ func deleteIndex(tableName, indexName string) error {
 	defer metaFile.Close()
 
 	// Lock mutex to synchronize access to metadata file
-	metaFilEMutex.Lock()
-	defer metaFilEMutex.Unlock()
 
 	// Read the indexes metadata
 	indexes, err := GetIndexesMetadata(tableName)
 	if err != nil {
 		return fmt.Errorf("failed to get indexes metadata: %w", err)
 	}
+
+	metaFilEMutex.Lock()
+	defer metaFilEMutex.Unlock()
 
 	// Find and remove the metadata of the deleted index
 	var updatedMetadata []byte
@@ -540,39 +549,40 @@ func GetIndexSize(tableName string, indexName string) (int32, error) {
 }
 
 // GetIndexHeight returns the height of the index.
-func GetIndexHeight(tableName string, indexName string) (int32, error) {
-	return 0, nil
-	/*
-		check if the index exists
-		return the height of the index
-	*/
-}
+
+// func GetIndexHeight(tableName string, indexName string) (int32, error) {
+// 	return 0, nil
+// 	/*
+// 		check if the index exists
+// 		return the height of the index
+// 	*/
+// }
 
 // [-- TO BE IMPLEMENTED --]
-func CheckIndexRebuild(tableName string) (string, error) {
+// func CheckIndexRebuild(tableName string) (string, error) {
 
-	/* read the indexes meta to know all the indexes for the table
-	     iterate over all indexes and check if the index needs to be rebuilt
-		 if the index needs to be rebuilt, call the rebuild index function
+// 	/* read the indexes meta to know all the indexes for the table
+// 	     iterate over all indexes and check if the index needs to be rebuilt
+// 		 if the index needs to be rebuilt, call the rebuild index function
 
-		 This fucntion to be called after each update or delete operation happens on the table ,
+// 		 This fucntion to be called after each update or delete operation happens on the table ,
 
-		 --
-		NOte : i know it is not the best solution to call this function after each update or delete operation
-				but it is the best solution for the first submission
+// 		 --
+// 		NOte : i know it is not the best solution to call this function after each update or delete operation
+// 				but it is the best solution for the first submission
 
-		 --
-	*/
+// 		 --
+// 	*/
 
-	return "", nil
-}
+// 	return "", nil
+// }
 
 // [-- TO BE IMPLEMENTED --]
-func RebuildIndex(tableName string, indexName string) error {
-	return nil
+// func RebuildIndex(tableName string, indexName string) error {
+// 	return nil
 
-	/*
-		check if the index exists
-		rebuild the index by creating a new B+ tree and adding the entries from the table or reblancing the tree
-	*/
-}
+// 	/*
+// 		check if the index exists
+// 		rebuild the index by creating a new B+ tree and adding the entries from the table or reblancing the tree
+// 	*/
+// }
