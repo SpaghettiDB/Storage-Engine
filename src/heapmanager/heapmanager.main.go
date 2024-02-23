@@ -82,6 +82,7 @@ func CreateHeap(name string) error {
 }
 
 // adds a new row to the heap with name.
+// TODO : should return the page number where the row was added.
 func AddRowToHeap(name string, row []byte) {
 	//open the file
 	//read the header
@@ -135,6 +136,24 @@ func AddRowToHeap(name string, row []byte) {
 		//overWrite the page to the file
 		overWritePageToHeap(file, int(pageCount-1), page)
 
+		//update the heap header with the new rowCount
+		//read the header in byte slice
+		header = make([]byte, heapHeaderSize)
+		if _, err := file.ReadAt(header, 0); err != nil {
+			return
+		}
+
+		//parse the header
+		_, rowCount := parseHeapHeader(header)
+
+		//update the rowCount
+		rowCount++
+		binary.BigEndian.PutUint32(header[4:8], rowCount)
+
+		//write the header to the file
+		file.WriteAt(header, 0)
+		file.Sync()
+
 	} else {
 
 		//if the free space available is not enough to add the row then add new page
@@ -148,24 +167,6 @@ func AddRowToHeap(name string, row []byte) {
 		//call the function recursively to add the row to the new page
 		AddRowToHeap(name, row)
 	}
-
-	//update the heap header with the new rowCount
-	//read the header in byte slice
-	header = make([]byte, heapHeaderSize)
-	if _, err := file.ReadAt(header, 0); err != nil {
-		return
-	}
-
-	//parse the header
-	_, rowCount := parseHeapHeader(header)
-
-	//update the rowCount
-	rowCount++
-	binary.BigEndian.PutUint32(header[4:8], rowCount)
-
-	//write the header to the file
-	file.WriteAt(header, 0)
-	file.Sync()
 
 }
 

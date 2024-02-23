@@ -1,23 +1,45 @@
 package main
 
 import (
-	"database/src/heapmanager"
+	"database/src/indexmanager"
+	"encoding/binary"
 	"fmt"
 )
 
 func main() {
+	// HeapManager PlayGround ----------------------------------------------------------------
 
-	heapmanager.CreateHeap("student")
-	heapmanager.AddRowToHeap("student", []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
-	heapmanager.AddRowToHeap("student", []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20})
+	// heapmanager.PlayGround()
 
-	rows := heapmanager.GetPageRowsFromHeap("student", 0)
+	//IndexManager-------------------------------------------------------------------
 
-	fmt.Println(rows)
+	// indexmanager.PlayGround()
+
+	// indexmanager.InitializeIndex("test", "test", "test", false)
+
+	//scan test -------------------------------------------------------------------
+
+	err := indexmanager.InitializeIndex("Student", "name", "name", false)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = indexmanager.InitializeIndex("Student", "id", "id", false)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	d := make([]byte, 4)
+	binary.BigEndian.PutUint32(d, 2)
+
+	indexmanager.AddEntryToTableIndexes("Student", [][]byte{[]byte("mohammed"), d}, 2)
+
+	result, err := indexmanager.GetIndexSize("Student", "name")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
 
 }

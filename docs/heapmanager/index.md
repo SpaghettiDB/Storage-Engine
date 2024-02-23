@@ -1,140 +1,38 @@
-# HeapManager
+## Index Documentation
 
-The `HeapManager` is the package that manages the heap of each table in the database. It is responsible for allocating and freeing space for the table's records in the disk. It also provides a way to access the records in the heap.
+This is the index documentation for the indexmanger module. This module is responsible for managing the index of the database. The index is a data structure that is used to optimize the retrieval of data from the database. The index manager module is responsible for creating, updating, and deleting the index. It also provides functions to search for data in the index.
 
-## Heap Structure
+The index manager module is implemented using the B+ tree data structure. The B+ tree is a self-balancing tree data structure that is commonly used in database systems. It is designed to optimize the retrieval of data by minimizing the number of disk accesses required to find a particular record.
 
-heap is a collection of pages. Each page is a collection of records. Each record is a collection of fields.
+## Index Metadata Structure
 
-### HeapHeader
+The index manager module maintains metadata for all indexes in a file with the following path: `indexes/Table_Name/meta.data`. The metadata includes information such as the name of the index, the data type of the key, and the file offset of the root node of the B+ tree. This metadata is stored in a system catalog table, which is used to keep track of all the indexes in the database.
 
-The heap header contains the following information:
+[Table Name Length (20 bytes)][Number of Indexes (4 bytes)]
 
-```
-| PageCount | RowCount |
-|    4B     |    4B    |
-```
+[Index 1]
+[Index 2]
+...
+[Index N]
 
-## Page Structure
+[Index Structure]
 
-![ page structure](assets/image.png)
+- Index Name (20 bytes)
+- Column Name (20 bytes)
+- updatesCount (4 bytes)
+- Indexversion (4 bytes)
+- number of keys (4 bytes)
+  ...
 
-### PageHeader
+## Index Structure
 
-- usually 96 bytes long contains some common required fields like:
-  - **PageId**
-    identifier of the page number in the heap file.
-  - **PageType**
-    type of the page, it can be:
-    - **DataPage**
-      contains records
-    - **IndexPage**
-      contains index entries
-    - **HeaderPage**
-      contains the heap header
-  - **PageSize**
-    the size of the page in bytes usually 8KB similiar to postgres and mysql.
-  - **pageoffset**
-    the offset of the page in the heap file.
-  - **NextPageId**
-    the identifier of the next page in the heap file.
-  - **PrevPageId**
-    the identifier of the previous page in the heap file.
-  - **FreeSpace**
-    the amount of free space in the page.
-  - **RecordCount/slotCount**
-    the number of records in the page.
-  - **FreeSpaceOffset**
-    the offset of the first free byte in the page.
-  - **DataOffset(useless if it fixed accros all pages)**
-    the offset of the first record in the page.
-  - **slotArrayOffset((useless if it is in fixed offset accros all pages)**
-    the offset of the slot array in the page.
-  - **Timestamps**
-    - CreationTimestamp
-    - LastUpdateTimestamp
-    - LastAccessTimestamp
-  - **Checksum(not necessary)**
-    a checksum to verify the integrity of the page.
+since the index manager module uses the B+ tree data structure to store the index, the index is a tree with the following path: `indexes/Table_Name/Index_Name.data`.
 
-### Record Structure
+## code of conduct
 
-- **RecordHeader**
-  - **RecordId**
-    the identifier of the record in the page.
-  - **RecordSize**
-    the size of the record in bytes.
-  - **FieldCount**
-    the number of fields in the record.
-  - **FieldOffset(useless if it fixed accros all records)**
-    the offset of the first field in the record.
-  - **Timestamps**
-    - CreationTimestamp
-    - LastUpdateTimestamp
-    - LastAccessTimestamp
-
-### slotArray
-
-- an array of slots, each slot contains the following fields:
-  - **RecordId**
-    the identifier of the record in the page.
-  - **RecordOffset**
-    the offset of the record in the page.
-  - **RecordSize**
-    the size of the record in bytes.
-
-## HeapManager API
-
-HeapManager deals with binary data, so it provides a set of functions to read and write binary data to the disk. so all the functions are dealing with byte arrays, heap manager doesn't know anything about the data types of the fields. It's the responsibility of the higher layers to interpret the data.
-
-as and example, the `InsertRow` function will take a byte slice as a parameter and it will write this byte slice to the heap.
-
-the `GetRow` function will take an identifier and it will return a byte slice that contains the record data.
-
-```go
-package main
-import (
-    "encoding/binary"
-    "fmt"
- )
-
-func main () {
-    // as example, row contains 2 integers
-    x := 10
-    y := 20
-    row := make([]byte, 8)
-    binary.LittleEndian.PutUint32(row, uint32(x))
-    binary.LittleEndian.PutUint32(row[4:], uint32(y))
-
-    //row is just a slice of bytes that contains the binary representation of the 2 integers
-
-    // insert the row to the heap
-    heapManager.InsertRow(row)
-
-    // get the row from the heap
-    result := heapManager.GetRow(1)
-    fmt.Println(result) // [10 0 0 0 20 0 0 0]
-}
-
-```
-
-## Heap file structure
-
-![ page structure](assets/heapfile.png)
-
-## HeapManager Public Functions
-
-- `CreateHeap(name string)`:
-
-  - creates a new heap file with file name = name and initializes the heap header.
-
-- `AddRowToHeap(name string , row []byte)`:
-
-  - adds a new row to the heap with name.
-
-- `GetRowFromHeap(name string, rowIndex int) []byte`:
-
-  - returns the row with the given index from the heap with name.
-
-- `GetPageFromHeap(name string, pageIndex int) [][]byte`:
-  - returns all the records in the page with the given index from the heap with name.
+- A new index is initialized in two cases a new table is created or a new index is created throughout a query.
+- when a new row is inserted or deleted, all the indexes found in that table should updates their own date with the appropriate operation.
+- when the table is deleted, all the indexes found in that table should be deleted as well.
+- when the index is deleted, the index file should be deleted and the metadata should be updated.
+- when any operation is performed on the index, the metadata should be updated.
+- when the index is created or updated, the metadata should be updated.
