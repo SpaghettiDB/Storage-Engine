@@ -1,9 +1,7 @@
 package main
 
 import (
-	"database/src/indexmanager"
-	"encoding/binary"
-	"fmt"
+	"database/src/schemamanager"
 )
 
 func main() {
@@ -19,27 +17,45 @@ func main() {
 
 	//scan test -------------------------------------------------------------------
 
-	err := indexmanager.InitializeIndex("Student", "name", "name", false)
-	if err != nil {
-		fmt.Println(err)
-	}
+	// err := indexmanager.InitializeIndex("Student", "name", "name", false)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 
-	err = indexmanager.InitializeIndex("Student", "id", "id", false)
-	if err != nil {
-		fmt.Println(err)
-	}
+	// err = indexmanager.InitializeIndex("Student", "id", "id", false)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 
-	d := make([]byte, 4)
-	binary.BigEndian.PutUint32(d, 2)
+	// d := make([]byte, 4)
+	// binary.BigEndian.PutUint32(d, 2)
 
-	indexmanager.AddEntryToTableIndexes("Student", [][]byte{[]byte("mohammed"), d}, 2)
+	// indexmanager.AddEntryToTableIndexes("Student", [][]byte{[]byte("mohammed"), d}, 2)
 
-	result, err := indexmanager.GetIndexSize("Student", "name")
+	// result, err := indexmanager.GetIndexSize("Student", "name")
 
-	if err != nil {
-		fmt.Println(err)
-	}
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 
-	fmt.Println(result)
+	// fmt.Println(result)
+
+
+
+
+	//schema testing -------------------------------------------------
+
+
+
+
+	schemamanager.AddTable(schemamanager.Table{
+		Name: "Student", 
+	})
+
+	schemamanager.AddColumn("Student", schemamanager.Column{
+		Name: "id",
+		DataType: "int",
+	})
+
 
 }

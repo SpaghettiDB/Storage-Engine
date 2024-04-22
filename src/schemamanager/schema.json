@@ -1,0 +1,9 @@
+{
+  "tables": [
+    {
+      "name": "Student",
+      "columns": [{ "name": "id", "dataType": "int" }],
+      "indexes": null
+    }
+  ]
+}
