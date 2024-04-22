@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/src/schemamanager"
+	"fmt"
 )
 
 func main() {
@@ -48,14 +49,37 @@ func main() {
 
 
 
-	schemamanager.AddTable(schemamanager.Table{
-		Name: "Student", 
-	})
+	// err := schemamanager.AddTable(schemamanager.Table{
+	// 	Name: "Student", 
+	// })
 
-	schemamanager.AddColumn("Student", schemamanager.Column{
-		Name: "id",
-		DataType: "int",
-	})
+	// if err != nil {
+	// 	panic(err)
+	// }
 
+	// err = schemamanager.AddColumn("Student", schemamanager.Column{
+	// 	Name: "id",
+	// 	DataType: "int",
+	// })
+
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// err = schemamanager.AddIndex("Student", schemamanager.Index{
+	// 	Name: "idIndex",
+	// 	ColumnName: "id",
+	// })
+
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	schemamap , err := schemamanager.GetSchemaMap()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(schemamap)
 
 }

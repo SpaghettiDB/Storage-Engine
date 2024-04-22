@@ -2,8 +2,25 @@
   "tables": [
     {
       "name": "Student",
-      "columns": [{ "name": "id", "dataType": "int" }],
-      "indexes": null
+      "columns": [
+        { "name": "id", "dataType": "int" },
+        { "name": "name", "dataType": "string" }
+      ],
+      "indexes": [
+        { "name": "idIndex", "columnName": "id" },
+        { "name": "idIndex", "columnName": "id" }
+      ]
+    },
+    {
+      "name": "Car",
+      "columns": [
+        { "name": "id", "dataType": "int" },
+        { "name": "name", "dataType": "string" }
+      ],
+      "indexes": [
+        { "name": "idIndex", "columnName": "id" },
+        { "name": "idIndex", "columnName": "id" }
+      ]
     }
   ]
 }
