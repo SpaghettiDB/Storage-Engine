@@ -1,4 +1,4 @@
-module database
+module github.com/SpaghettiDB/Storage-Engine
 
 go 1.22.0
 

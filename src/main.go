@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/src/indexmanager"
+	"github.com/SpaghettiDB/Storage-Engine/src/indexmanager"
 	"encoding/binary"
 	"fmt"
 )
