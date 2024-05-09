@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/src/schemamanager"
+	"github.com/SpaghettiDB/Storage-Engine/src/schemamanager"
 	"fmt"
 )
 
