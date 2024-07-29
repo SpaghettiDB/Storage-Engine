@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-
 	"github.com/krasun/fbptree"
 )
 
@@ -108,17 +107,6 @@ func InitializeIndex(tableName string, indexName string, ColumnName string, clus
 
 	return nil
 }
-
-/*
-There is two cases for the add index entry function
-1- clustered index or prefound index
-  your dont need the index name , you just need the table name and the key and the page ID
-and you will iterate over all indexes and add the key to its B+ tree
-
-2- non-clustered index
-  the table is already has a data in this cloumn do you need to scan data
-   and add the key to the B+ tree of this specific index
-*/
 
 // the first function to add entry to a specific index of the table
 func addEntryToIndex(tableName string, indexName string, key []byte, pageID int32) error {
@@ -532,10 +520,7 @@ func getIndexOffset(tableName string, indexName string) int64 {
 	return 0 // Return 0 if the index is not found
 }
 
-/*
- 	These functions are not required for the first submission
-    but they are good to have for future optimizations in execution plan and calculation of query cost
-*/
+
 
 // GetIndexSize returns the size of the index in bytes.
 // It should return the size of the index data structures.
